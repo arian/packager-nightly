@@ -23,9 +23,9 @@ function deleteDirectory($dir){
 	if (!is_dir($dir) || is_link($dir)) return unlink($dir);
 	foreach (scandir($dir) as $item) {
 		if ($item == '.' || $item == '..') continue;
-		if (!deleteDirectory($dir . "/" . $item)) {
-			chmod($dir . "/" . $item, 0777);
-			if (!deleteDirectory($dir . "/" . $item)) return false;
+		if (!deleteDirectory($dir . '/' . $item)) {
+			chmod($dir . '/' . $item, 0777);
+			if (!deleteDirectory($dir . '/' . $item)) return false;
 		}
 	}
 	return rmdir($dir);
@@ -48,7 +48,7 @@ class Builder {
 	}
 
 	protected function download(){
-		download($this->url, $this->filename);
+		download($this->url, $this->filename, self::$downloadTimeout);
 	}
 
 	protected function extract(){
