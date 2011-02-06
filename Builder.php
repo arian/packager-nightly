@@ -1,6 +1,51 @@
 <?php
 
+ini_set('display_errors', 1);
+
+// header('Content-Type: text/plain');
+
 include dirname(__FILE__) . '/packager/packager.php';
+
+
+// Ugh, safe mode anybody?
+function curl_redir_exec($ch, $url){
+	static $curl_loops = 0;
+	static $curl_max_loops = 20;
+
+	if ($curl_loops++ >= $curl_max_loops){
+		$curl_loops = 0;
+		return false;
+	}
+
+	curl_setopt($ch, CURLOPT_HEADER, true);
+
+	$data = curl_exec($ch);
+	list($header, $data) = preg_split('/(\n(\s)*\n)/', $data);
+	$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+	if ($http_code == 301 || $http_code == 302) {
+		$matches = array();
+		preg_match('/Location:(.*?)\n/', $header . PHP_EOL, $matches);
+		$url = trim($matches[1]);
+
+		if (!empty($url)){
+			curl_setopt($ch, CURLOPT_URL, $url);
+			return curl_redir_exec($ch, $url);
+		}
+	} else {
+		$curl_loops = 0;
+
+		$new_ch = curl_init();
+		curl_setopt($new_ch, CURLOPT_URL, $url);
+		curl_setopt($new_ch, CURLOPT_RETURNTRANSFER, 1);
+		// https
+		curl_setopt($new_ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($new_ch, CURLOPT_SSL_VERIFYHOST, 2);
+		return curl_exec($new_ch);
+	}
+}
+
+
 
 function download($url, $file, $timeout = 10){
 	$ch = curl_init();
@@ -11,8 +56,8 @@ function download($url, $file, $timeout = 10){
 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 	// redirect
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-	$file_contents = curl_exec($ch);
+	// curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	$file_contents = curl_redir_exec($ch, $url);
 	curl_close($ch);
 	file_put_contents($file, $file_contents);
 }
@@ -35,7 +80,7 @@ function deleteDirectory($dir){
 class Builder {
 
 	public static $downloadTimeout = 10;
-	public static $tmp = 'tmp/';
+	public static $tmp = 'tmp';
 
 	protected $repo;
 	protected $url;
