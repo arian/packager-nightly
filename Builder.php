@@ -123,11 +123,12 @@ class Builder {
 		unlink($file);
 	}
 
-	public function build($file){
+	public function build($file, $commit = null){
 		$this->download();
 		$this->extract();
 		$dir = $this->findDirectory();
 		$output = $this->package($dir);
+		if ($commit) $output = str_replace('%build%', $commit, $output);
 		file_put_contents($file, $output);
 		$this->cleanup($dir, $this->filename);
 	}
