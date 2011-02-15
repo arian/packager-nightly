@@ -5,8 +5,17 @@ ini_set('display_errors', 1);
 include dirname(__FILE__) . '/Builder.php';
 
 $commit = null;
-$repository = null;
-$repositories = array('mootools-core', 'mootools-more');
+$repositories = array(
+	'mootools-core' => array(
+		'branch' => 'master'
+	),
+	'mootools-more' => array(
+		'branch' => 'master'
+	)
+);
+$defaultRepository = 'mootools-core';
+$repository = $defaultRepository;
+$branch = $repositories[$repository]['branch'];
 
 if (isset($_POST['payload'])){
 	$data = json_decode($_POST['payload'], true);
@@ -14,18 +23,20 @@ if (isset($_POST['payload'])){
 	if (!preg_match('/^([0-9a-f]+)$/', $commit)) $commit = null;
 	if (isset($data['repository']) && isset($data['repository']['name'])){
 		$repository = $data['repository']['name'];
-		if (!in_array($repository, $repositories)) $repository = null;
+		if (empty($repositories[$repository])) $repository = null;
 	}
+
+	if (!$repository) $repository = $defaultRepository;
+	$branch = $repositories[$repository]['branch'];
+	if ($data['ref'] != 'refs/heads/' . $branch) $branch = false;
 }
 
-if (!$repository) $repository = $repositories[0];
+if ($branch){
+	Builder::$tmp = sys_get_temp_dir();
 
-
-Builder::$tmp = sys_get_temp_dir();
-
-$builder = new Builder('mootools/' . $repository);
-$builder->build('build/' . $repository . '.js', $commit);
-
+	$builder = new Builder('mootools/' . $repository, $branch);
+	$builder->build('build/' . $repository . '.js', $commit);
+}
 
 $log =  'commit: '. $commit . PHP_EOL
 	. 'repository: ' . $repository . PHP_EOL
