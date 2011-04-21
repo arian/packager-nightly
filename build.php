@@ -13,12 +13,20 @@ $repositories = array(
 		'branch' => 'master'
 	)
 );
+
 $defaultRepository = 'mootools-core';
 $repository = $defaultRepository;
 $branch = $repositories[$repository]['branch'];
 
 if (isset($_POST['payload'])){
-	$data = json_decode($_POST['payload'], true);
+	$payload = $_POST['payload'];
+} else {
+	$data = json_decode(file_get_contents('build/log.txt'), true);
+	$payload = isset($data['payload']) ? $data['payload'] : null;
+}
+
+if (!empty($payload)){
+	$data = json_decode($payload, true);
 	$commit = $data['after'];
 	if (!preg_match('/^([0-9a-f]+)$/', $commit)) $commit = null;
 	if (isset($data['repository']) && isset($data['repository']['name'])){
@@ -38,8 +46,10 @@ if ($branch){
 	$builder->build('build/' . $repository . '.js', $commit);
 }
 
-$log =  'commit: '. $commit . PHP_EOL
-	. 'repository: ' . $repository . PHP_EOL
-	. var_export(array($_POST, $_SERVER), true);
+$log = json_encode(array(
+	'commit' => $commit,
+	'repository' => $repository,
+	'payload' => $payload
+));
 
 file_put_contents('build/log.txt', $log);
